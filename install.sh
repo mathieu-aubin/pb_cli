@@ -1,22 +1,39 @@
 #!/usr/bin/env bash
 set -e
 
+_TMPDIR=$(mktemp -d);
+_REPOURL="https://github.com/ptpb/pb_cli/archive";
+_REPOFILE="master.tar.gz";
 
 fetch_source () {
-  curl -Lo- https://github.com/ptpb/pb_cli/archive/master.tar.gz \
-      | tar xz -C "$tmpdir" --strip-components=1
+  echo -e "\033[1mFetching/extracting pb_cli archive...\033[0m";
+  curl -#LO ${_REPOURL}/${_REPOFILE} && \
+    tar -xvf ${_REPOFILE} -C ${_TMPDIR} --strip-components=1;
 }
 
+cleanup () {
+  echo -ne "\033[1mCleaning up...\033[0m";
+  [[ -d ${_TMPDIR} ]] && rm -rf ${_TMPDIR} && \
+    echo -e "\033[1m DONE.\033[0m";
+  unset _TMPFILE _REPOURL _REPOFILE;
+}
 
 order66 () {
-  local tmpdir="$(mktemp -d)"
+  # Move into temp dir
+  pushd ${_TMPDIR} &>/dev/null;
 
-  cd "$tmpdir"
+    # Fetch source archive
+    fetch_source;
+    
+    # Install script
+    install -Dm755 src/pb.sh /usr/local/bin/pb;
 
-  fetch_source "$tmpdir"
+  # Move out of temp dir
+  popd &>/dev/null;
 
-  install -Dm755 src/pb.sh /usr/local/bin/pb
+  # Proceed to cleanup
+  cleanup;
 }
 
-
-order66
+# Check that temp dir has been created before proceeding
+[[ ! -z ${_TMPDIR} ]] && order66 || echo -e "\033[1mThere was an error creating temporary folder, aborting.\033[0m";
